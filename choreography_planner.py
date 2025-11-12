@@ -17,12 +17,12 @@ goals = [
     "StandInit",      
     "Hello",        
     "BlowKisses",     
-    "StandZero",     
-    "Stand",        
     "StayingAlive",  
     "WipeForehead",
-    "VOnEyes",    
     "Sit",
+    "StandZero",     
+    "VOnEyes",    
+    "Stand",        
     "SitRelax",
     "Crouch"
 ]
@@ -35,13 +35,13 @@ predecessors = {
     
     "BlowKisses": ["Stand", "ArmDance", "ArmDanceDX", "ArmDanceSX", "Bow", "Wave", "Hello"],
     
-    "StandZero": ["RotationFeet", "ArmDanceDX", "ArmDanceSX", "BirthdayDance", 
+    "StandZero": ["Sit", "SitRelax", "RotationFeet", "ArmDanceDX", "ArmDanceSX", "BirthdayDance", 
                   "Hello", "Stand", "BlowKisses", "Wave", "Bow", "Glory"],
     
     "Rhythm": ["ArmDance", "ArmDanceDX", "ArmDanceSX", "Stand", "Bow", 
                "RotationFeet", "StandZero", "Wave"],
     
-    "Stand": ["RotationFeet", "BirthdayDance", "Hello", "StandZero", "Rhythm",
+    "Stand": ["Sit", "SitRelax", "RotationFeet", "BirthdayDance", "Hello", "StandZero", "Rhythm",
               "WipeForehead", "Bow", "Wave", "Glory", "Clap",
               "F_Crouch", "Dab__"],
     
@@ -54,12 +54,12 @@ predecessors = {
 
     "Sit": ["Dab__", "F_Crouch", "Stand", "StandZero", "VOnEyes"],
 
-    "SitRelax": ["Sit", "F_Crouch"],
+    "SitRelax": ["F_Crouch"],
 
     "Disco": ["Stand", "StandZero", "TheRobot", "PulpFiction", 
               "DiagonalRight", "RotationFeet", "F_Crouch"],
 
-    "Crouch": ["Sit", "SitRelax", "F_Crouch", "Dab__", "Disco"],
+    "Crouch": ["SitRelax", "F_Crouch", "Dab__", "Disco"],
 
     "Wave": ["START", "StandInit", "Hello", "Stand", "StandZero", "Clap", 
              "Glory", "Joy", "ComeOn", "Bow"],
@@ -144,31 +144,45 @@ KEEP_TOP_K = 5               # Numero soluzioni alternative da mostrare
 class State:
     """Rappresenta uno stato nella ricerca della coreografia."""
     
-    def __init__(self, sequence: List[str], goals_completed: int, total_time: float):
+    def __init__(self, sequence: List[str], goals_completed: int, total_time: float, filler_moves: int):
         self.sequence = sequence
         self.goals_completed = goals_completed
         self.total_time = total_time
-        
+        self.filler_moves = filler_moves # <-- NUOVA RIGA
         # Euristica: tempo rimanente stimato per i goal
         self.heuristic_value = self._compute_heuristic()
         
-        # Penalità ENORME per i goal non completati.
-        # Questo costringe l'algoritmo a dare priorità al completamento
-        # dei goal sopra ogni altra cosa.
-        # (1000 è un peso arbitrario, basta che sia molto più grande
-        # della durata totale)
-        goal_penalty = (len(goals) - self.goals_completed) * 1000.0
+        # === LOGICA DI PRIORITÀ A 3 LIVELLI ===
+
+        # 1. Penalità GOAL (Priorità Massima: 10000.0)
+        # Deve essere enorme per garantire che il completamento dei goal
+        # sia SEMPRE più importante di tutto il resto.
+        goal_penalty = (len(goals) - self.goals_completed) * 10000.0
+
+        # 2. Penalità FILLER (Priorità Media: 100.0)
+        # Si applica solo se i goal sono finiti ma mancano i filler.
+        # Guida la ricerca (dopo i goal) ad aggiungere filler.
+        filler_penalty = 0.0
+        if self.goals_completed == len(goals) and self.filler_moves < 5:
+            filler_penalty = (5 - self.filler_moves) * 100.0
+
+        # 3. Penalità TEMPO (Priorità Bassa: 0-50+)
+        # Guida la ricerca verso il range 110-125s.
+        # Usiamo il tempo *stimato* (attuale + euristica)
+        time_penalty = 0.0
+        estimated_final_time = self.total_time + self.heuristic_value
         
-        # f = g + h  (A* standard)
-        # g = self.total_time (costo per arrivare qui)
-        # h = self.heuristic_value (costo stimato per finire)
-        #
-        # La nostra priorità ora è:
-        # (Penalità Goal) + (Costo Percorso) + (Stima Futura)
-        # L'algoritmo cercherà di minimizzare prima 'goal_penalty' (completando
-        # i goal) e poi 'total_time + heuristic_value' (trovando il
-        # percorso più veloce).
-        self.priority = goal_penalty + self.total_time + self.heuristic_value
+        if estimated_final_time < 110.0:
+            # Penalizza quanto siamo lontani dal minimo
+            time_penalty = (110.0 - estimated_final_time)
+        elif estimated_final_time > 125.0:
+            # Penalizza quanto siamo lontani dal massimo
+            time_penalty = (estimated_final_time - 125.0)
+        # Se è nel range 110-125, la penalità è 0 (perfetto!)
+
+        # La priorità totale è la somma delle penalità.
+        # L'algoritmo cercherà di minimizzare questo valore.
+        self.priority = goal_penalty + filler_penalty + time_penalty
 
     def _compute_heuristic(self) -> float:
         """Euristica ammissibile: somma durate goals rimanenti."""
@@ -236,13 +250,22 @@ def expand_state(state: State) -> List[State]:
         new_sequence = state.sequence + [move]
         new_time = state.total_time + get_move_duration(move)
         
-        # Calcola goals completati
+        # Calcola goals completati E filler
         new_goals_completed = state.goals_completed
-        if (new_goals_completed < len(goals) and 
-            move == goals[new_goals_completed]):
-            new_goals_completed += 1
+        new_filler_moves = state.filler_moves
         
-        new_state = State(new_sequence, new_goals_completed, new_time)
+        is_next_goal = (new_goals_completed < len(goals) and 
+                        move == goals[new_goals_completed])
+        
+        if is_next_goal:
+            new_goals_completed += 1
+        else:
+            # Se NON è il prossimo goal, è un filler
+            # (anche se è un goal futuro o uno vecchio)
+            new_filler_moves += 1
+        
+        # Passa il nuovo conteggio filler
+        new_state = State(new_sequence, new_goals_completed, new_time, new_filler_moves)
         expanded_states.append(new_state)
     
     return expanded_states
@@ -267,7 +290,7 @@ def find_choreography() -> Tuple[Optional[State], List[State]]:
     all_solutions = []
     
     # Stato iniziale
-    initial_state = State([], 0, 0.0)
+    initial_state = State([], 0, 0.0, 0) # Aggiunto 0 per filler_moves
     heapq.heappush(pq, (initial_state.priority, counter, initial_state))
     counter += 1
     
@@ -325,7 +348,7 @@ def print_solution(solution: State, title: str = "Soluzione Migliore"):
     print(f"Target: {TARGET_TIME}s")
     print(f"Differenza: {abs(solution.total_time - TARGET_TIME):.2f}s")
     print(f"Goals completati: {solution.goals_completed}/{len(goals)}")
-    
+    print(f"Mosse 'filler': {solution.filler_moves}") # <-- NUOVA RIGA
     # Verifica ordine goals
     goal_positions = []
     for i, goal in enumerate(goals):
@@ -334,11 +357,24 @@ def print_solution(solution: State, title: str = "Soluzione Migliore"):
             goal_positions.append(pos)
         except ValueError:
             print(f"⚠️  Goal mancante: {goal}")
-    
-    if len(goal_positions) == len(goals) and goal_positions == sorted(goal_positions):
+    for v in goals: print(type(v))
+    for v in goal_positions: print(type(v))
+    if goal_positions == sorted(goal_positions):
         print("✅ Ordine goals rispettato")
     else:
-        print("❌ Ordine goals NON rispettato")
+        print(f"❌ Ordine goals NON rispettato: {goal_positions} vs {goals}")
+        if len(goal_positions) != len(goals):
+            print(f"lunghezza goals trovati: {len(goal_positions)} vs trovati: {len(goals)}")
+    
+    if solution.filler_moves >= 5:
+        print("✅ Numero filler rispettato (>= 5)")
+    else:
+        print(f"❌ Numero filler NON rispettato ({solution.filler_moves} < 5)")
+    
+    if 110.0 <= solution.total_time <= 125.0:
+        print("✅ Tempo nel range ideale")
+    else:
+        print("❌ Tempo fuori dal range ideale")
 
 def main():
     """Funzione principale."""
