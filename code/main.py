@@ -8,7 +8,8 @@ che rispettino i vincoli di precedenza e si avvicinino al tempo target.
 import heapq
 import json
 import sys
-from typing import List, Dict, Tuple, Optional, Set
+from robot_functions import do_moves
+
 
 # ===== CONFIGURAZIONE INPUT (MODIFICABILE) =====
 
@@ -132,12 +133,15 @@ durations = {
 
 # ===== PARAMETRI DI CONTROLLO =====
 TARGET_TIME = 120.0          # Tempo target in secondi
+MIN_TIME = 110.0             # Tempo minimo accettabile
+MAX_TIME = 125.0             # Tempo massimo accettabile
 DEFAULT_DURATION = 3.0       # Durata default per mosse non definite
 MAX_EXPANSIONS = 10000       # Limite espansioni per evitare esplosione
 MAX_STEPS = 50               # Lunghezza massima sequenza
 MAX_CONSECUTIVE_REPEATS = 3  # Max ripetizioni consecutive stessa mossa
 ALLOW_POST_FILL = True       # Permetti filler dopo completamento goals
 KEEP_TOP_K = 5               # Numero soluzioni alternative da mostrare
+
 
 # ===== STRUTTURE DATI =====
 
@@ -172,12 +176,12 @@ class State:
         time_penalty = 0.0
         estimated_final_time = self.total_time + self.heuristic_value
         
-        if estimated_final_time < 110.0:
+        if estimated_final_time < MIN_TIME:
             # Penalizza quanto siamo lontani dal minimo
-            time_penalty = (110.0 - estimated_final_time)
-        elif estimated_final_time > 125.0:
+            time_penalty = (MIN_TIME - estimated_final_time)
+        elif estimated_final_time > MAX_TIME:
             # Penalizza quanto siamo lontani dal massimo
-            time_penalty = (estimated_final_time - 125.0)
+            time_penalty = (estimated_final_time - MAX_TIME)
         # Se è nel range 110-125, la penalità è 0 (perfetto!)
 
         # La priorità totale è la somma delle penalità.
@@ -340,6 +344,14 @@ def save_solution(solution: State, filename: str = "choreography_output.json"):
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
+def check_order(solution: State, goals: list):
+    target_len = len(goals)
+    c = 0
+    for e in solution.sequence:
+        if e == goals[c]:
+            c += 1
+    return c == target_len
+
 def print_solution(solution: State, title: str = "Soluzione Migliore"):
     """Stampa una soluzione in modo leggibile."""
     print(f"\n=== {title} ===")
@@ -357,12 +369,10 @@ def print_solution(solution: State, title: str = "Soluzione Migliore"):
             goal_positions.append(pos)
         except ValueError:
             print(f"⚠️  Goal mancante: {goal}")
-    for v in goals: print(type(v))
-    for v in goal_positions: print(type(v))
-    if goal_positions == sorted(goal_positions):
+    if check_order(solution, goals):
         print("✅ Ordine goals rispettato")
     else:
-        print(f"❌ Ordine goals NON rispettato: {goal_positions} vs {goals}")
+        print(f"❌ Ordine goals NON rispettato:")
         if len(goal_positions) != len(goals):
             print(f"lunghezza goals trovati: {len(goal_positions)} vs trovati: {len(goals)}")
     
@@ -414,6 +424,13 @@ def main():
             print_solution(alt, f"Alternativa {i}")
     
     print(f"\n🎯 Ricerca completata!")
+    #TODO, passare la migliore coreografia al modulo di esecuzione del NAO Robot
+    print("🚀 Esecuzione della coreografia sul NAO Robot in corso...")
+
+    ip = sys.argv[1]
+    port = sys.argv[2]
+    print(sys.argv)
+    
 
 if __name__ == "__main__":
     main()
