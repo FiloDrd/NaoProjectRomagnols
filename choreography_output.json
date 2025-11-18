@@ -1,11 +1,10 @@
 {
-  "total_time": 112.8,
+  "total_time": 110.8,
   "sequence": [
     "StandInit",
     "Hello",
     "BlowKisses",
     "VOnEyes",
-    "Dab__",
     "Sit",
     "StandZero",
     "StayingAlive",
@@ -17,12 +16,14 @@
     "Rhythm",
     "Stand",
     "VOnEyes",
-    "Dab__",
+    "Dab",
     "Stand",
     "SitRelax",
+    "Stand",
+    "Dab",
     "Crouch"
   ],
   "goals_completed": 11,
-  "target_time": 120.0,
-  "time_difference": 7.2
+  "target_time": 110.0,
+  "time_difference": 0.8
 }

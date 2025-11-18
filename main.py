@@ -44,7 +44,7 @@ predecessors = {
                "RotationFeet", "StandZero", "Wave"],
     
     "Stand": ["Sit", "SitRelax", "RotationFeet", "BirthdayDance", "Hello", "StandZero", "Rhythm",
-              "WipeForehead", "Bow", "Wave", "Glory", "Clap", "Dab__"],
+              "WipeForehead", "Bow", "Wave", "Glory", "Clap", "Dab"],
     
     "StayingAlive": ["PulpFiction", "DiagonalRight", "RotationFeet", "TheRobot", 
                      "Bow", "Stand", "StandZero"],
@@ -53,7 +53,7 @@ predecessors = {
     
     "VOnEyes": ["BlowKisses", "Hello", "Wave", "Joy", "ComeOn", "Stand", "WipeForehead"],
 
-    "Sit": ["Dab__", "Stand", "StandZero", "VOnEyes"],
+    "Sit": ["Dab", "Stand", "StandZero", "VOnEyes"],
 
     "SitRelax": ["PulpFiction", "DiagonalRight", "RotationFeet", "TheRobot", 
                      "Bow", "Stand", "StandZero"],
@@ -61,7 +61,7 @@ predecessors = {
     "Disco": ["Stand", "StandZero", "TheRobot", "PulpFiction", 
               "DiagonalRight", "RotationFeet", "Crouch"],
 
-    "Crouch": ["SitRelax", "Crouch", "Dab__", "Disco"],
+    "Crouch": ["SitRelax", "Crouch", "Dab", "Disco"],
 
     "Wave": ["START", "StandInit", "Hello", "Stand", "StandZero", "Clap", 
              "Glory", "Joy", "ComeOn", "Bow"],
@@ -89,7 +89,7 @@ predecessors = {
     "BirthdayDance": ["Stand", "StandZero", "Wave", "Clap", "Bow"],
     
     # Ponti critici per transizioni
-    "Dab__": ["Stand", "StandZero", "Bow", "Glory", "Wave", "Clap", 
+    "Dab": ["Stand", "StandZero", "Bow", "Glory", "Wave", "Clap", 
               "WipeForehead", "VOnEyes"],
     
     "DanceMove": ["Stand", "StandZero", "Wave", "Bow", "Clap"],
@@ -102,37 +102,20 @@ durations = {
     "BlowKisses": 9.867,
     "Bow": 3.994,
     "Clap": 4.180,
-    "Crouch": 30.435,
-    "Dab__": 3.231,
+    "Crouch": 5.435,
+    "Dab": 3.231,
     "Disco": 5.152,
     "Rhythm": 3.099,
     "StandInit": 1.410,
     "StayingAlive": 6.030,
-    "VOnEyes": 6.049,
-    "WipeForehead": 3.0,  # Assunto
-    "Hello": 3.0,
-    "StandZero": 3.0,
-    "Stand": 3.0,
-    "Sit": 3.0,
-    "SitRelax": 3.0,
-    "Wave": 3.0,
-    "Glory": 3.0,
-    "Joy": 3.0,
-    "ComeOn": 3.0,
-    "ArmDanceSX": 3.0,
-    "PulpFiction": 3.0,
-    "RotationFeet": 3.0,
-    "DiagonalRight": 3.0,
-    "TheRobot": 3.0,
-    "BirthdayDance": 3.0,
-    "DanceMove": 3.0,
+    "VOnEyes": 6.049
 }
 
 # ===== PARAMETRI DI CONTROLLO =====
-TARGET_TIME = 120.0          # Tempo target in secondi
-MIN_TIME = 110.0             # Tempo minimo accettabile
+TARGET_TIME = 110.0          # Tempo target in secondi
+MIN_TIME = 100.0             # Tempo minimo accettabile
 MAX_TIME = 125.0             # Tempo massimo accettabile
-DEFAULT_DURATION = 3.0       # Durata default per mosse non definite
+DEFAULT_DURATION = 5.0       # Durata default per mosse non definite
 MAX_EXPANSIONS = 10000       # Limite espansioni per evitare esplosione
 MAX_STEPS = 50               # Lunghezza massima sequenza
 MAX_CONSECUTIVE_REPEATS = 3  # Max ripetizioni consecutive stessa mossa
@@ -223,7 +206,7 @@ def get_valid_next_moves(current_move: str, goals_completed: int, sequence: List
     # Aggiungi mosse intermedie permesse (non goals già completati)
     completed_goals_set = set(goals[:goals_completed])
     
-    for move, move_preds in predecessors.items():
+    for move, move_preds in sorted(predecessors.items()):
         if (move not in completed_goals_set and 
             current_move in move_preds):  # Evita self-loop
             
