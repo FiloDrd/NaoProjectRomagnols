@@ -1,0 +1,29 @@
+NAO CHALLENGE SUBMISSION
+Dradi Filippo 		0001239199
+Mercuri Francesco	0001235012
+
+-------------------------------------------------------
+RESOURCES
+-------------------------------------------------------
+GitHub Repository:
+https://github.com/FiloDrd/NaoProjectRomagnols/
+
+Song: Drake - One Dance
+Youtube link: https://www.youtube.com/watch?v=ki0Ocze98U8
+-------------------------------------------------------
+HOW TO EXECUTE
+-------------------------------------------------------
+Prerequisites:
+Please ensure that the naoqi environment is launched and running before executing the project.
+
+Execution Steps:
+
+Open your terminal in the project folder and run the following commands:
+
+Case 1) If the robot runs in localhost:9559
+chmod +x execute_choreograpy.py
+./execute_choreograpy.py 
+
+Case 2) Otherwise:
+python3 main.py <ip> <port>
+
