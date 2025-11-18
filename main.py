@@ -51,9 +51,9 @@ predecessors = {
     
     "WipeForehead": ["Stand", "StandZero", "Wave", "Glory", "Clap", "Bow", "StayingAlive"],
     
-    "VOnEyes": ["BlowKisses", "Hello", "Wave", "Joy", "ComeOn", "Stand", "WipeForehead"],
+    "VOnEyes": ["Hello", "Wave", "Joy", "ComeOn", "Stand", "BlowKisses", "WipeForehead"],
 
-    "Sit": ["Dab", "Stand", "StandZero", "VOnEyes"],
+    "Sit": ["Dab", "Stand", "StandZero"],
 
     "SitRelax": ["PulpFiction", "DiagonalRight", "RotationFeet", "TheRobot", 
                      "Bow", "Stand", "StandZero"],
@@ -120,7 +120,7 @@ MAX_EXPANSIONS = 10000       # Limite espansioni per evitare esplosione
 MAX_STEPS = 50               # Lunghezza massima sequenza
 MAX_CONSECUTIVE_REPEATS = 3  # Max ripetizioni consecutive stessa mossa
 ALLOW_POST_FILL = True       # Permetti filler dopo completamento goals
-KEEP_TOP_K = 5               # Numero soluzioni alternative da mostrare
+KEEP_TOP_K = 3               # Numero soluzioni alternative da mostrare
 
 
 # ===== STRUTTURE DATI =====
@@ -177,10 +177,8 @@ class State:
         # Min-heap, quindi priorità più bassa è migliore
         return self.priority < other.priority
 
-# ===== FUNZIONI HELPER =====
 
 def get_move_duration(move: str) -> float:
-    """Ottiene la durata di una mossa."""
     return durations.get(move, DEFAULT_DURATION)
 
 def can_follow(prev_move: str, next_move: str) -> bool:
@@ -218,7 +216,7 @@ def get_valid_next_moves(current_move: str, goals_completed: int, sequence: List
             
             valid_moves.append(move)
     
-    return list(set(valid_moves))  # Rimuovi duplicati
+    return list(set(valid_moves))
 
 def expand_state(state: State) -> List[State]:
     """Espande uno stato generando tutti i possibili stati successivi."""
@@ -244,11 +242,8 @@ def expand_state(state: State) -> List[State]:
         if is_next_goal:
             new_goals_completed += 1
         else:
-            # Se NON è il prossimo goal, è un filler
-            # (anche se è un goal futuro o uno vecchio)
             new_filler_moves += 1
         
-        # Passa il nuovo conteggio filler
         new_state = State(new_sequence, new_goals_completed, new_time, new_filler_moves)
         expanded_states.append(new_state)
     
@@ -258,13 +253,9 @@ def is_valid_solution(state: State) -> bool:
     """Verifica se uno stato rappresenta una soluzione valida."""
     return state.goals_completed >= len(goals)
 
-# ===== ALGORITMO PRINCIPALE =====
 
 def find_choreography() -> Tuple[Optional[State], List[State]]:
-    """
-    Trova la migliore coreografia usando algoritmo best-first/A*.
-    Returns: (best_solution, alternative_solutions)
-    """
+
     # Priority queue: (priority, counter, state)
     # Counter per evitare confronti tra stati con stessa priorità
     pq = []
@@ -283,20 +274,17 @@ def find_choreography() -> Tuple[Optional[State], List[State]]:
     while pq and expansions < MAX_EXPANSIONS:
         _, _, current_state = heapq.heappop(pq)
         
-        # Evita stati già visitati (basato su sequenza e goals completati)
         state_key = (tuple(current_state.sequence), current_state.goals_completed)
         if state_key in visited:
             continue
         visited.add(state_key)
         
-        # Verifica se è una soluzione
         if is_valid_solution(current_state):
             all_solutions.append(current_state)
             if best_solution is None or current_state.priority < best_solution.priority:
                 best_solution = current_state
             continue
         
-        # Espandi stato corrente
         for next_state in expand_state(current_state):
             heapq.heappush(pq, (next_state.priority, counter, next_state))
             counter += 1
@@ -309,7 +297,6 @@ def find_choreography() -> Tuple[Optional[State], List[State]]:
     
     return best_solution, alternatives
 
-# ===== OUTPUT E MAIN =====
 
 def save_solution(solution: State, filename: str = "choreography_output.json"):
     """Salva la soluzione in formato JSON."""
@@ -333,7 +320,6 @@ def check_order(solution: State, goals: list):
     return c == target_len
 
 def print_solution(solution: State, title: str = "Soluzione Migliore"):
-    """Stampa una soluzione in modo leggibile."""
     print(f"\n=== {title} ===")
     print(f"Sequenza: {' → '.join(solution.sequence)}")
     print(f"Durata totale: {solution.total_time:.2f}s")
